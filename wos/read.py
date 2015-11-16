@@ -21,6 +21,10 @@ __all__ = [
     "TabDelimitedReader",
 ]
 
+encodings = [('utf-16-le', codecs.BOM_UTF16_LE),
+             ('utf-16-be', codecs.BOM_UTF16_BE),
+             ('utf-8-sig', codecs.BOM_UTF8)]
+
 
 class ReadError(Exception):
     pass
@@ -28,7 +32,7 @@ class ReadError(Exception):
 
 def sniff_file(fh, length=10, offset=0):
     sniff = fh.read(length)
-    fh.seek(offset)
+    fh.seek(-length)
 
     return sniff
 
@@ -46,10 +50,7 @@ def sniff_encoding(fh):
     """
     sniff = sniff_file(fh)
 
-    encodings = {codecs.BOM_UTF16_LE: 'utf-16-le',
-                 codecs.BOM_UTF16_BE: 'utf-16-be',
-                 codecs.BOM_UTF8: 'utf-8-sig'}
-    for bom, encoding in encodings.items():
+    for encoding, bom in encodings:
         if sniff.startswith(bom):
             return encoding
     # WoS export files are either UTF-8 or UTF-16
@@ -89,7 +90,10 @@ def read(fname, using=None, encoding=None, **kwargs):
         with open(fname, 'rb') as fh:
             encoding = sniff_encoding(fh)
 
+    offsets = {encoding: len(bom) for encoding, bom in encodings}
+
     with open(fname, 'rt', encoding=encoding) as fh:
+        fh.seek(offsets.get(encoding, 0))
         reader_class = using or get_reader(fh)
         reader = reader_class(fh, **kwargs)
         for record in reader:
