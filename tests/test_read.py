@@ -159,14 +159,14 @@ class TestTabDelimitedReader:
                   encoding="utf-16-le") as fh:
             r = TabDelimitedReader(fh)
             for record in r:
-                pass
+                assert u'PT' in record
 
     def test_wos_tabdelimited_utf8(self):
         with open("data/wos_tab_delimited_win_utf8.txt", "rt",
                   encoding="utf-8-sig") as fh:
             r = TabDelimitedReader(fh)
             for record in r:
-                pass
+                assert u'PT' in record
 
 # This fails because of small differences between content of fields in the two
 # formats...
