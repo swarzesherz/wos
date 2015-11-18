@@ -21,10 +21,6 @@ __all__ = [
     "TabDelimitedReader",
 ]
 
-encodings = [('utf-16-le', codecs.BOM_UTF16_LE),
-             ('utf-16-be', codecs.BOM_UTF16_BE),
-             ('utf-8-sig', codecs.BOM_UTF8)]
-
 
 class ReadError(Exception):
     pass
@@ -32,7 +28,7 @@ class ReadError(Exception):
 
 def sniff_file(fh, length=10, offset=0):
     sniff = fh.read(length)
-    fh.seek(-length)
+    fh.seek(offset)
 
     return sniff
 
@@ -50,7 +46,14 @@ def sniff_encoding(fh):
     """
     sniff = sniff_file(fh)
 
-    for encoding, bom in encodings:
+    # WoS files typically include a BOM, which we want to strip from the actual
+    # data. The encodings 'utf-8-sig' and 'utf-16' do this for UTF-8 and UTF-16
+    # respectively. When dealing with files with BOM, avoid the encodings
+    # 'utf-8' (which is fine for non-BOM UTF-8), 'utf-16-le', and 'utf-16-be'.
+    # See e.g. http://stackoverflow.com/a/8827604
+    encodings = {codecs.BOM_UTF16: 'utf-16',
+                 codecs.BOM_UTF8: 'utf-8-sig'}
+    for bom, encoding in encodings.items():
         if sniff.startswith(bom):
             return encoding
     # WoS export files are either UTF-8 or UTF-16
@@ -90,11 +93,11 @@ def read(fname, using=None, encoding=None, **kwargs):
         with open(fname, 'rb') as fh:
             encoding = sniff_encoding(fh)
 
-    offsets = {encoding: len(bom) for encoding, bom in encodings}
+    if using is None:
+        with open(fname, 'rt', encoding=encoding) as fh:
+            reader_class = get_reader(fh)
 
     with open(fname, 'rt', encoding=encoding) as fh:
-        fh.seek(offsets.get(encoding, 0))
-        reader_class = using or get_reader(fh)
         reader = reader_class(fh, **kwargs)
         for record in reader:
             yield record
