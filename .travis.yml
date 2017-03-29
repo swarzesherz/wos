@@ -4,7 +4,7 @@ python:
     - "3.4"
     - "3.5"
 install:
-    - pip install --upgrade coverage coveralls nose
+    - pip install --upgrade pip coverage coveralls nose
 script: 
     - printenv PWD
     - pip install .
